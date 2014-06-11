@@ -1,24 +1,24 @@
+import Prelude hiding (reverse, splitAt, take, drop)
+import Data.Sequence
 
-isSeq :: (Enum a, Eq a) => [a] -> Bool
-isSeq [] = True
-isSeq (x:[]) = True
-isSeq (x:y:zs) | y == succ x = isSeq $ y:zs
-isSeq _ = False
+isSeq :: Seq Int -> Int -> Bool
+isSeq (viewl -> EmptyL) = True
+isSeq (viewl -> x :< xs) i = (x == i+1) && (isSeq (xs) (i + 1))
 
-tickHours :: [Int] -> [Int] -> Int -> [Int]
-tickHours q hours 12 = (\(b:bs) -> bs ++ hours ++ [b]) $ tickFives q [] 1
-tickHours q hours count = (\(b:bs) -> tickHours bs (b:hours) (count + 1)) $ tickFives q [] 1
+tickHours :: Seq Int -> Seq Int -> Int -> Seq Int
+tickHours q hours 12 = (\ q -> (drop 1 q) >< hours >< (take 1 q)) $ tickFives q empty 1
+tickHours q hours count = (\ q -> tickHours (drop 1 q) ((index q 0)<|hours) (count + 1)) $ tickFives q empty 1
 
-tickFives :: [Int] -> [Int] -> Int -> [Int]
-tickFives q fives 12 = tickOnes q [] 1 ++ fives
-tickFives q fives count = (\(b:bs) -> tickFives bs (b:fives) (count + 1)) $ tickOnes q [] 1
+tickFives :: Seq Int -> Seq Int -> Int -> Seq Int
+tickFives q fives 12 = tickOnes q >< fives
+tickFives q fives count = (\ q -> tickFives (drop 1 q) ((index q 0)<|fives) (count + 1)) $ tickOnes q
 
-tickOnes :: [Int] -> [Int] -> Int -> [Int]
-tickOnes q ones 5 = q ++ ones
-tickOnes (ball:balls) ones count = tickOnes balls (ball:ones) (count + 1)
-		
-getDays :: Int -> [Int] -> Int
-getDays halfDays q = if halfDays > 1 && isSeq q then quot halfDays 2
-										 else getDays (halfDays + 1) $ tickHours q [] 1
+tickOnes :: Seq Int -> Seq Int
+tickOnes q = (\ (x, y) -> y >< reverse x) $ splitAt 4 q
 
-main = print $ getDays 1 [1..30]
+--getDays :: Int -> Seq Int -> Int
+--getDays halfDays q = if halfDays > 1 && isSeq q then quot halfDays 2
+                     --else getDays (halfDays + 1) $ tickHours q empty 1
+
+--main = print $ getDays 1 $ fromList [1..30]
+
