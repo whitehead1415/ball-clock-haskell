@@ -1,24 +1,33 @@
-import Prelude hiding (reverse, splitAt, take, drop)
-import Data.Sequence
+data Hold = Hold { q :: [Int], row :: [Int] } deriving (Show)
 
-isSeq :: Seq Int -> Int -> Bool
-isSeq (viewl -> EmptyL) = True
-isSeq (viewl -> x :< xs) i = (x == i+1) && (isSeq (xs) (i + 1))
+isReset :: [Int] -> Int -> Bool
+isReset []     _ = True
+isReset (x:xs) i
+  | x /= i = False
+  | otherwise = isReset xs (i + 1)
 
-tickHours :: Seq Int -> Seq Int -> Int -> Seq Int
-tickHours q hours 12 = (\ q -> (drop 1 q) >< hours >< (take 1 q)) $ tickFives q empty 1
-tickHours q hours count = (\ q -> tickHours (drop 1 q) ((index q 0)<|hours) (count + 1)) $ tickFives q empty 1
+split ::[Int] -> Hold -> Hold
+split r (Hold {q = q, row = b:bs}) = Hold (q ++ bs) (b:r)
 
-tickFives :: Seq Int -> Seq Int -> Int -> Seq Int
-tickFives q fives 12 = tickOnes q >< fives
-tickFives q fives count = (\ q -> tickFives (drop 1 q) ((index q 0)<|fives) (count + 1)) $ tickOnes q
+tick :: Int -> [Int] -> [Int] -> Hold
+tick 0 q      newList   = Hold q newList
+tick i (x:xs) newList   = tick (i-1) xs (x : newList)
 
-tickOnes :: Seq Int -> Seq Int
-tickOnes q = (\ (x, y) -> y >< reverse x) $ splitAt 4 q
+tickFive :: Int -> Hold -> Hold
+tickFive 0 hold = hold
+tickFive i (Hold {q = q, row = r}) = tickFive (i - 1) $ split r $ tick 5 q []
 
---getDays :: Int -> Seq Int -> Int
---getDays halfDays q = if halfDays > 1 && isSeq q then quot halfDays 2
-                     --else getDays (halfDays + 1) $ tickHours q empty 1
+tickHour :: Int -> Hold -> Hold
+tickHour 0 hold = hold
+tickHour i (Hold {q = q, row = r}) = tickHour (i - 1) $ split r $ tickFive 12 $ Hold q []
 
---main = print $ getDays 1 $ fromList [1..30]
+tickHalfDay :: [Int] -> [Int]
+tickHalfDay q = (\ (Hold {q = q, row = b:bs}) -> q ++ bs ++ [b]) $ tickHour 12 $ Hold q []
+
+go :: Int -> [Int] -> Int
+go i q
+  | isReset q 1 && i /= 0 = i
+  | otherwise = go (i + 1) (tickHalfDay (tickHalfDay q))
+
+main = print $ go 0 [1..30]
 
